@@ -3,7 +3,7 @@
   "scripts": {
     "dev": "gulp dev --name ",
     "build": "gulp build",
-    "init": "gulp init --name"
+    "init": "gulp init"
   },
   "dependencies": {
     "global": "^4.4.0",
@@ -32,6 +32,7 @@
     "gulp-sass": "^4.1.0",
     "gulp-uglify": "^3.0.2",
     "gulp4-run-sequence": "^1.0.0",
+    "inquirer": "^8.0.0",
     "minimist": "^1.2.5",
     "mkdirp": "^1.0.4"
   }

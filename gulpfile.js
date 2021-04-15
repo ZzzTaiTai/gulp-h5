@@ -15,27 +15,29 @@ const imagemin = require('gulp-imagemin') // image mini
 const cache = require('gulp-cache');//cahche 
 const rev = require('gulp-rev-dxb');
 const revCollector = require('gulp-rev-collector-dxb'); 
-const gulpif = require('gulp-if') 
+const gulpif = require('gulp-if');
 
-const minimist = require('minimist');//cmd 
+
+const minimist = require('minimist');//cmd
+const inquirer = require('inquirer');
 const browserSync = require('browser-sync');
 const reload = browserSync.reload;
 
 const argv = minimist(process.argv.slice(2));
-const path = argv.name != undefined ? argv.name:"";//gulp init --  newProject
-const template = argv.temp != undefined ? argv.temp:template.defalut;
+const name = argv.name != undefined ? argv.name:"";//gulp dev --ewProject
+let projectName = "";
+let tempDef = "defalut";
 const dist = 'dist/';
 const basePath = {
   build:'build/',// build path
   project:'project/',//project path
-  distJs:dist+'js',
-  distCss:dist+'css',
-  distImg:dist+'images',
-  projectName:dist+path,
+  projectPath:dist+projectName,
   template:{
     defalut:'template/H5'
-  }//template path
+  }
 }
+
+// inquirerList(promptList);
 let env = 'dev'//default env
 function set_env(type) {
     env = process.env.NODE_ENV = type || 'dev';
@@ -45,7 +47,7 @@ function set_env(type) {
 function browser(){
   return browserSync.init({
     server: {
-        baseDir: dist + path,
+        baseDir:basePath.projectPath + name,
         directory: true,
     },
     port: 3031
@@ -84,7 +86,7 @@ function babelHandler(){
 
 //CSS
 function cssHandler(){
-  del([basePath.projectName+"/css"]);
+  del([basePath.projectPath+"/css"]);
   return src(basePath.project+'**/*.css')
     .pipe(autoFixer({
       cascade: false,//是否美化属性值 格式化
@@ -139,31 +141,52 @@ function addVersion(){
 
 // init project
 function init() {
-  return src( template +'/**/*')
-    .pipe(dest(basePath.project + path));
+  return src( basePath.template[tempDef] +'/**/*')
+    .pipe(dest(basePath.project + projectName));
 };
 
-//npm run dev --name TestProject
 function devHanlder() {
   set_env('dev');
-  return src(basePath.project + path + '**/*')
+  return src(basePath.project + projectName + '**/*')
     .pipe(dest(dist));
 }
 
 function buildHanlder() {
   set_env('build');
-  return src(dist+path+"/**/*")
+  return src(basePath.projectPath+"/**/*")
     .pipe(dest(basePath.build))
 }
-//Test Fun
 
 function delDist() {
   return src(dist)
     .pipe(clean());
 }
 
+function inquirerInit(cb){
+  const promptList = [{
+    type: 'input',
+    message: '请输入项目名称',
+    name: 'projectName',
+    default: "project" 
+  },{
+    type: 'list',
+    message: '请选择项目模板',
+    name: 'temp',
+    choices: [
+      "defalut"
+    ],
+  }]
+  inquirer.prompt(promptList).then(answers => {
+    projectName = answers.projectName;
+    tempDef = answers.temp;
+    basePath.projectPath = dist + projectName;
+    cb();
+  })
+ 
+};
+
 //parallel async
-exports.init = series(init,devHanlder,htmlHandler,sassHandler,babelHandler,cssHandler,filesWatch,browser);
-exports.dev = series(delDist,htmlHandler,sassHandler,babelHandler,cssHandler,filesWatch,browser);
-exports.build = series(buildHanlder,htmlHandler,sassHandler,babelHandler,cssHandler,miniImages,fileRev,addVersion);
+exports.init = series(inquirerInit,init,devHanlder,parallel(htmlHandler,sassHandler,babelHandler,cssHandler),filesWatch,browser);
+exports.dev = series(delDist,htmlHandler,parallel(sassHandler,babelHandler,cssHandler),filesWatch,browser);
+exports.build = series(buildHanlder,htmlHandler,parallel(sassHandler,babelHandler,cssHandler,miniImages),fileRev,addVersion);
 exports.default = browser;
