@@ -1,1 +1,0 @@
-"use strict";var a="Test",d="Testc",b=function(){console.log("HLLEO")};b();

@@ -1,5 +1,7 @@
 const {src,dest,series,parallel,watch} = require("gulp");
 const del = require("del");//delete file
+const clean = require('gulp-clean') // clean file
+const rename = require('gulp-rename') // rename file
 const plugins = require('gulp-load-plugins')();//gulp plugins
 const concat = require('gulp-concat');//Connection file
 const babel = require('gulp-babel');//es6 => es5
@@ -7,23 +9,28 @@ const sass = require('gulp-sass');//sass => css
 const less = require('gulp-less');//less => css
 const cleanCSS = require('gulp-clean-css');// minifiy css
 const autoFixer = require('gulp-autoprefixer');// autoprefixer css
-const gulpif = require('gulp-if') // 条件判断
-const uglify = require('gulp-uglify') // js压缩
-const htmlmin = require('gulp-htmlmin') // html压缩
-const imagemin = require('gulp-imagemin') // 图片压缩
+const uglify = require('gulp-uglify') // js mini
+const htmlmin = require('gulp-htmlmin') // html mini
+const imagemin = require('gulp-imagemin') // image mini
 const cache = require('gulp-cache');//cahche 
+const rev = require('gulp-rev-dxb');
+const revCollector = require('gulp-rev-collector-dxb'); 
+const gulpif = require('gulp-if') 
 
-const rename = require('gulp-rename');
-const minimist = require('minimist');
+const minimist = require('minimist');//cmd 
 const browserSync = require('browser-sync');
 const reload = browserSync.reload;
 
 const argv = minimist(process.argv.slice(2));
 const path = argv.name != undefined ? argv.name:"";//gulp init --  newProject
+const template = argv.temp != undefined ? argv.temp:template.defalut;
 const dist = 'dist/';
 const basePath = {
   build:'build/',// build path
   project:'project/',//project path
+  distJs:dist+'js',
+  distCss:dist+'css',
+  distImg:dist+'images',
   projectName:dist+path,
   template:{
     defalut:'template/H5'
@@ -38,7 +45,7 @@ function set_env(type) {
 function browser(){
   return browserSync.init({
     server: {
-        baseDir: projectName,
+        baseDir: dist + path,
         directory: true,
     },
     port: 3031
@@ -58,28 +65,32 @@ function filesWatch(cb){
   cb();
 }
  
-
 //HTML
 function htmlHandler(){
-  return src(basePath.project+'**/*.html')  
+  return src(basePath.project+'**/*.html')
     .pipe(dest(dist)); 
 }
 
 //JS
 function babelHandler(){
-  return src(basePath.project+'**/*.js')  
+  return src(basePath.project+'**/*.js') 
     .pipe(babel())
-    .pipe(dest(dist)); 
+    .pipe(gulpif(env === 'build',uglify({
+      mangle:true, //change variable name
+			compress:true,
+    })))
+    .pipe(dest(dist));
 }
 
 //CSS
 function cssHandler(){
-  del([projectName+"/css"]);
+  del([basePath.projectName+"/css"]);
   return src(basePath.project+'**/*.css')
     .pipe(autoFixer({
       cascade: false,//是否美化属性值 格式化
       remove:true//是否去掉不必要（过时）的前缀
-    }))  
+    }))
+    .pipe(gulpif(env === 'build',cleanCSS({compatibility: 'ie8'})))  
     .pipe(dest(dist)); 
 
 }
@@ -90,41 +101,46 @@ function sassHandler(){
     .pipe(sass().on('error', sass.logError))
     .pipe(dest(basePath.project)); 
 }
+
 function lessHandler(){
   return src(basePath.project+'**/*.less')  
-    .pipe(less())
+    .pipe(less().on('error', less.logError))
     .pipe(dest(basePath.project)); 
 }
 
-function miniJs(){
-  return src(dist+'**/*.js')  
-    .pipe(uglify({
-      mangle:true, //是否修改变量名
-			compress:true,//是否完全压缩
-    }))
-    .pipe(dest(basePath.build)); 
-}
-
-function miniCss(){
-  return src(dist+'**/*.css')  
-    .pipe(cleanCSS({compatibility: 'ie8'}))
-    .pipe(dest(basePath.build)); 
-}
 function miniImages(){
   return src(dist+'**/images/*')  
   .pipe(cache(imagemin({
-    optimizationLevel: 5, //类型：Number  默认：3  取值范围：0-7（优化等级）
+    optimizationLevel: 5, //  defalut：3  min-max：0-7 level
     progressive: true
   })))
-  .pipe(dest(basePath.build)); 
+  .pipe(dest(basePath.distImg)); 
+}
+
+function fileRev(){
+  return src(['dist/**/**/*.css', 'dist/**/**/*.js'])
+  .pipe(rename({dirname: ''}))
+  .pipe(rev())
+  .pipe(rev.manifest({
+      path: 'rev-manifest.json',
+      merge: true
+  }))
+  .pipe(dest('./'));
+}
+
+function addVersion(){
+  src(['rev-manifest.json', basePath.build+'/**/*.html'])
+  .pipe(revCollector())   // 根据.json文件 执行文件内js/css名的替换
+  .pipe(dest(basePath.build));
+  return src('rev-manifest.json')
+    .pipe(clean())
+
 }
 
 // init project
-function init(cb) {
-  del([basePath.project + path])
-  src( basePath.template+'**/*')
+function init() {
+  return src( template +'/**/*')
     .pipe(dest(basePath.project + path));
-  cb();
 };
 
 //npm run dev --name TestProject
@@ -136,33 +152,18 @@ function devHanlder() {
 
 function buildHanlder() {
   set_env('build');
-  return src(dist+"**/*.html")
+  return src(dist+path+"/**/*")
     .pipe(dest(basePath.build))
 }
 //Test Fun
 
 function delDist() {
-  return  del([dist]);
-}
-function delBuild() {
-  return  del([basePath.build]);
+  return src(dist)
+    .pipe(clean());
 }
 
-
-function setEnv(cb) {
-  set_env('Test');
-  cb();
-}
-//Test Fun
-function consoleLog(cb) {
-  console.log(env)
-  cb();
-}
-//series 顺序
-//parallel 并行
-exports.init = series(init,browser,filesWatch);
-exports.dev = series(delDist,devHanlder,htmlHandler,sassHandler,babelHandler,cssHandler,filesWatch,browser);
-exports.build = series(delBuild,buildHanlder,miniImages,miniCss,miniJs);
+//parallel async
+exports.init = series(init,devHanlder,htmlHandler,sassHandler,babelHandler,cssHandler,filesWatch,browser);
+exports.dev = series(delDist,htmlHandler,sassHandler,babelHandler,cssHandler,filesWatch,browser);
+exports.build = series(buildHanlder,htmlHandler,sassHandler,babelHandler,cssHandler,miniImages,fileRev,addVersion);
 exports.default = browser;
-exports.consoleLog = series(setEnv,consoleLog);
-exports.cc = consoleLog
