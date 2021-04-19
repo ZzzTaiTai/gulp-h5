@@ -31,7 +31,8 @@ const dist = 'dist/';
 const basePath = {
   build:'build/',// build path
   project:'project/',//project path
-  projectPath:dist+projectName,
+  projectObj:'project/'+name,
+  outPath:dist+projectName,
   template:{
     defalut:'template/H5'
   }
@@ -47,7 +48,7 @@ function set_env(type) {
 function browser(){
   return browserSync.init({
     server: {
-        baseDir:basePath.projectPath + name,
+        baseDir:basePath.outPath + name,
         directory: true,
     },
     port: 3031
@@ -56,11 +57,11 @@ function browser(){
 
 //hot update 
 function filesWatch(cb){
-  watch(basePath.project+'**/*.html').on('change',htmlHandler); 
-  watch(basePath.project+'**/*.scss').on('change',sassHandler);
-  watch(basePath.project+'**/*.less').on('change',lessHandler);
-  watch(basePath.project+'**/*.js').on('change', babelHandler); 
-  watch(basePath.project+'**/*.css').on('change', function(){
+  watch(basePath.projectObj+'/**/*.html').on('change',htmlHandler); 
+  watch(basePath.projectObj+'/**/*.scss').on('change',sassHandler);
+  watch(basePath.projectObj+'/**/*.less').on('change',lessHandler);
+  watch(basePath.projectObj+'/**/*.js').on('change', babelHandler); 
+  watch(basePath.projectObj+'/**/*.css').on('change', function(){
     cssHandler(cb);
   }); 
   watch([dist+'**/*']).on('change', reload); 
@@ -85,38 +86,40 @@ function babelHandler(){
 }
 
 //CSS
-function cssHandler(){
-  del([basePath.projectPath+"/css"]);
-  return src(basePath.project+'**/*.css')
+function cssHandler(cb){
+  del([basePath.outPath+"/css"]);
+  return src(basePath.projectObj+'/**/!(_)*.css')
     .pipe(autoFixer({
       cascade: false,//是否美化属性值 格式化
       remove:true//是否去掉不必要（过时）的前缀
     }))
     .pipe(gulpif(env === 'build',cleanCSS({compatibility: 'ie8'})))  
-    .pipe(dest(dist)); 
-
+    .pipe(dest(basePath.outPath + name)); 
+  cb()
 }
 
 // SASS
 function sassHandler(){
-  return src(basePath.project+'**/*.scss')  
+  return src(basePath.projectObj+'/css/**/*.scss')  
     .pipe(sass().on('error', sass.logError))
-    .pipe(dest(basePath.project)); 
+    .pipe(rename({dirname: ''}))
+    .pipe(dest(basePath.projectObj+'/css')); 
 }
 
 function lessHandler(){
-  return src(basePath.project+'**/*.less')  
+  return src(basePath.projectObj+'/css/**/*.less')  
     .pipe(less().on('error', less.logError))
-    .pipe(dest(basePath.project)); 
+    .pipe(rename({dirname: ''}))
+    .pipe(dest(basePath.projectObj+'/css')); 
 }
 
 function miniImages(){
-  return src(dist+'**/images/*')  
+  return src(basePath.projectObj+'images/**/*')  
   .pipe(cache(imagemin({
     optimizationLevel: 5, //  defalut：3  min-max：0-7 level
     progressive: true
   })))
-  .pipe(dest(basePath.distImg)); 
+  .pipe(dest(basePath.outPath)); 
 }
 
 function fileRev(){
@@ -142,23 +145,29 @@ function addVersion(){
 // init project
 function init() {
   return src( basePath.template[tempDef] +'/**/*')
-    .pipe(dest(basePath.project + projectName));
+      .pipe(dest(basePath.projectObj));
 };
+
+function cleanProject(){
+  return src([basePath.outPath,basePath.projectObj],{ allowEmpty: true })
+    .pipe(clean());
+}
 
 function devHanlder() {
   set_env('dev');
-  return src(basePath.project + projectName + '**/*')
+  return src(basePath.projectObj + '**/*')
     .pipe(dest(dist));
 }
 
 function buildHanlder() {
   set_env('build');
-  return src(basePath.projectPath+"/**/*")
+  return src(basePath.outPath+"/**/*")
     .pipe(dest(basePath.build))
 }
 
 function delDist() {
-  return src(dist)
+  // return src(dist,{ allowEmpty: true })
+  return src(dist,{ allowEmpty: true })
     .pipe(clean());
 }
 
@@ -179,14 +188,15 @@ function inquirerInit(cb){
   inquirer.prompt(promptList).then(answers => {
     projectName = answers.projectName;
     tempDef = answers.temp;
-    basePath.projectPath = dist + projectName;
+    basePath.outPath = dist + projectName;
+    basePath.projectObj =basePath.project + projectName;
     cb();
   })
- 
 };
 
 //parallel async
-exports.init = series(inquirerInit,init,devHanlder,parallel(htmlHandler,sassHandler,babelHandler,cssHandler),filesWatch,browser);
-exports.dev = series(delDist,htmlHandler,parallel(sassHandler,babelHandler,cssHandler),filesWatch,browser);
-exports.build = series(buildHanlder,htmlHandler,parallel(sassHandler,babelHandler,cssHandler,miniImages),fileRev,addVersion);
+exports.init = series(inquirerInit,cleanProject,init,devHanlder,parallel(htmlHandler,sassHandler,babelHandler),cssHandler,filesWatch,browser);
+exports.dev = series(parallel(htmlHandler,sassHandler,babelHandler),cssHandler,filesWatch,browser);
+exports.build = series(buildHanlder,htmlHandler,parallel(sassHandler,babelHandler,miniImages),cssHandler,fileRev,addVersion);
+// exports.build = series(buildHanlder,htmlHandler,parallel(sassHandler,babelHandler),cssHandler,fileRev,addVersion);
 exports.default = browser;
