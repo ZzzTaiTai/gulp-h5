@@ -1,0 +1,6 @@
+@mixin bgImage ($path){
+  background-image: url($path + '@2x.png');
+  @media (-webkit-min-device-pixel-ratio: 3), (min-device-pixel-ratio: 3) {
+    background-image: url($path + '@3x.png');
+  }
+}
