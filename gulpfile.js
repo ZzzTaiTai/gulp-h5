@@ -38,7 +38,6 @@ const basePath = {
   }
 }
 
-// inquirerList(promptList);
 let env = 'dev'//default env
 function set_env(type) {
     env = process.env.NODE_ENV = type || 'dev';
@@ -165,12 +164,6 @@ function buildHanlder() {
     .pipe(dest(basePath.build))
 }
 
-function delDist() {
-  // return src(dist,{ allowEmpty: true })
-  return src(dist,{ allowEmpty: true })
-    .pipe(clean());
-}
-
 function inquirerInit(cb){
   const promptList = [{
     type: 'input',
@@ -198,5 +191,4 @@ function inquirerInit(cb){
 exports.init = series(inquirerInit,cleanProject,init,devHanlder,parallel(htmlHandler,sassHandler,babelHandler),cssHandler,filesWatch,browser);
 exports.dev = series(parallel(htmlHandler,sassHandler,babelHandler),cssHandler,filesWatch,browser);
 exports.build = series(buildHanlder,htmlHandler,parallel(sassHandler,babelHandler,miniImages),cssHandler,fileRev,addVersion);
-// exports.build = series(buildHanlder,htmlHandler,parallel(sassHandler,babelHandler),cssHandler,fileRev,addVersion);
 exports.default = browser;
