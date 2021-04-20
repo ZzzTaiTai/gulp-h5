@@ -3,7 +3,8 @@
   "scripts": {
     "dev": "gulp dev --name ",
     "build": "gulp build",
-    "init": "gulp init"
+    "init": "gulp init",
+    "gulp":"gulp"
   },
   "dependencies": {
     "global": "^4.4.0",
