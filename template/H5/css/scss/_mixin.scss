@@ -4,3 +4,42 @@
     background-image: url($path + '@3x.png');
   }
 }
+
+@mixin clearfix(){
+  &::before,
+  &::after{
+    content:"";
+    display: table;
+  }
+  &::after{
+    clear: both;
+  }
+}
+@mixin border-radius($radius) {
+  -webkit-border-radius: $radius;
+   -moz-border-radius: $radius;
+    -ms-border-radius: $radius;
+        border-radius: $radius;
+}
+
+@mixin ellipsis () {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@mixin ellipsis-multi ($line) {
+  overflow : hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: $line;
+  -webkit-box-orient: vertical;
+}
+@mixin triangle($width: 4px, $color: #000) {
+  display: inline-block;
+  width: 0;
+  height: 0;
+  vertical-align: middle;
+  border-top: $width solid $color;
+  border-left: $width solid transparent;
+  border-right: $width solid transparent;
+}
