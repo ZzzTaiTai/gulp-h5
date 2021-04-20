@@ -17,7 +17,7 @@ yarn OR yarn install
 ```
 初始化
 ```
-yarn init
+yarn run init
 
 ```
 
