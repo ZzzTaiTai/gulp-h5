@@ -5,9 +5,11 @@
 ### yarn
 
 一直使用NPM，尝试了下yarn效果如何（好像快了） 
+```
 yarn install 
 yarn add gulp -D 
 yarn add node-sass -D --registry https://registry.npm.taobao.org/
+```
 
 ### 启动项目
 
