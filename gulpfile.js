@@ -48,7 +48,8 @@ function browser(){
   return browserSync.init({
     server: {
         baseDir:basePath.outPath + name,
-        directory: true,
+        // directory: true,
+        index: "index.html"
     },
     port: 3031
   });//在task中，操作完成时，必须要通过cb()或者return的方式来告知gulp此任务已完成
@@ -92,6 +93,9 @@ function cssHandler(cb){
       cascade: false,//是否美化属性值 格式化
       remove:true//是否去掉不必要（过时）的前缀
     }))
+    .on('error', function(path,stats){
+      console.log(path);
+    })
     .pipe(gulpif(env === 'build',cleanCSS({compatibility: 'ie8'})))  
     .pipe(dest(basePath.outPath + name)); 
   cb()
